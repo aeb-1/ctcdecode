@@ -35,6 +35,7 @@ class CTCBeamDecoder(object):
         num_processes=4,
         blank_id=0,
         log_probs_input=False,
+        hot_words = None,
     ):
         self.cutoff_top_n = cutoff_top_n
         self._beam_width = beam_width
@@ -49,6 +50,7 @@ class CTCBeamDecoder(object):
                 alpha, beta, model_path.encode(), self._labels, self._num_labels
             )
         self._cutoff_prob = cutoff_prob
+        self.hot_words = hot_words.encode()
 
     def decode(self, probs, seq_lens=None):
         """
@@ -101,6 +103,7 @@ class CTCBeamDecoder(object):
                 timesteps,
                 scores,
                 out_seq_len,
+                self.hot_words,
             )
         else:
             ctc_decode.paddle_beam_decode(
@@ -118,6 +121,7 @@ class CTCBeamDecoder(object):
                 timesteps,
                 scores,
                 out_seq_len,
+                self.hot_words,
             )
 
         return output, scores, timesteps, out_seq_len
@@ -270,3 +274,4 @@ class DecoderState:
 
     def __del__(self):
         ctc_decode.paddle_release_state(self.state)
+

@@ -11,6 +11,7 @@
 #include "boost/python.hpp"
 #include "boost/python/stl_iterator.hpp"
 
+#include <unordered_map>
 using namespace std;
 
 template<typename T>
@@ -46,7 +47,8 @@ int beam_decode(at::Tensor th_probs,
                 at::Tensor th_output,
                 at::Tensor th_timesteps,
                 at::Tensor th_scores,
-                at::Tensor th_out_length)
+                at::Tensor th_out_length,
+                const char* data)
 {
     Scorer *ext_scorer = NULL;
     if (scorer != NULL) {
@@ -73,9 +75,29 @@ int beam_decode(at::Tensor th_probs,
         inputs.push_back(temp);
     }
 
+    const std::string str = data;
+    std::unordered_map<std::string, float> hw;
+     //hw.insert({"oo", float(0.5)});
+     //hw.insert({"opo", float(0.8)});
+     //hw.insert({str, float(0.8)});
+    std::string word;
+    std::string boost;
+    float fboost;
 
+    std::stringstream ss(str);
+
+    while (ss.good()) {
+        std::string substr;
+        getline(ss, substr, ',');
+        std::stringstream sss(substr);
+
+        getline(sss, word, ':');
+        getline(sss, boost, ':');
+        fboost = stof(boost);
+        hw[word] = fboost;
+    }
     std::vector<std::vector<std::pair<double, Output>>> batch_results =
-    ctc_beam_search_decoder_batch(inputs, new_vocab, beam_size, num_processes, cutoff_prob, cutoff_top_n, blank_id, log_input, ext_scorer);
+    ctc_beam_search_decoder_batch(inputs, new_vocab, beam_size, num_processes, cutoff_prob, cutoff_top_n, blank_id, log_input, ext_scorer, hw);
     auto outputs_accessor = th_output.accessor<int, 3>();
     auto timesteps_accessor =  th_timesteps.accessor<int, 3>();
     auto scores_accessor =  th_scores.accessor<float, 2>();
@@ -113,10 +135,11 @@ int paddle_beam_decode(at::Tensor th_probs,
                        at::Tensor th_output,
                        at::Tensor th_timesteps,
                        at::Tensor th_scores,
-                       at::Tensor th_out_length){
+                       at::Tensor th_out_length,
+                       const char* data){
 
     return beam_decode(th_probs, th_seq_lens, labels, vocab_size, beam_size, num_processes,
-                cutoff_prob, cutoff_top_n, blank_id, log_input, NULL, th_output, th_timesteps, th_scores, th_out_length);
+                cutoff_prob, cutoff_top_n, blank_id, log_input, NULL, th_output, th_timesteps, th_scores, th_out_length, data);
 }
 
 int paddle_beam_decode_lm(at::Tensor th_probs,
@@ -133,10 +156,11 @@ int paddle_beam_decode_lm(at::Tensor th_probs,
                           at::Tensor th_output,
                           at::Tensor th_timesteps,
                           at::Tensor th_scores,
-                          at::Tensor th_out_length){
+                          at::Tensor th_out_length,
+                          const char* data){
 
     return beam_decode(th_probs, th_seq_lens, labels, vocab_size, beam_size, num_processes,
-                cutoff_prob, cutoff_top_n, blank_id, log_input, scorer, th_output, th_timesteps, th_scores, th_out_length);
+                cutoff_prob, cutoff_top_n, blank_id, log_input, scorer, th_output, th_timesteps, th_scores, th_out_length, data);
 }
 
 
@@ -256,7 +280,10 @@ void* paddle_get_decoder_state(const std::vector<std::string> &vocabulary,
     if (scorer != NULL) {
         ext_scorer = static_cast<Scorer *>(scorer);
     }
-    DecoderState* state = new DecoderState(vocabulary, beam_size, cutoff_prob, cutoff_top_n, blank_id, log_input, ext_scorer);
+    std::unordered_map<std::string, float> hw;
+    hw.insert({"oo", float(0.5)});
+    hw.insert({"opo", float(0.8)});
+    DecoderState* state = new DecoderState(vocabulary, beam_size, cutoff_prob, cutoff_top_n, blank_id, log_input, ext_scorer, hw);
     return static_cast<void*>(state);
 }
 
@@ -301,3 +328,4 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("paddle_release_state", &paddle_release_state, "paddle_release_state");
   //paddle_beam_decode_with_given_state
 }
+

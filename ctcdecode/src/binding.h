@@ -11,7 +11,8 @@ int paddle_beam_decode(THFloatTensor *th_probs,
                        THIntTensor *th_output,
                        THIntTensor *th_timesteps,
                        THFloatTensor *th_scores,
-                       THIntTensor *th_out_length);
+                       THIntTensor *th_out_length,
+                       const char* data);
 
 
 int paddle_beam_decode_lm(THFloatTensor *th_probs,
@@ -28,7 +29,8 @@ int paddle_beam_decode_lm(THFloatTensor *th_probs,
                           THIntTensor *th_output,
                           THIntTensor *th_timesteps,
                           THFloatTensor *th_scores,
-                          THIntTensor *th_out_length);
+                          THIntTensor *th_out_length,
+                          const char* data);
 
 void* paddle_get_scorer(double alpha,
                         double beta,
@@ -53,3 +55,4 @@ int is_character_based(void *scorer);
 size_t get_max_order(void *scorer);
 size_t get_dict_size(void *scorer);
 void reset_params(void *scorer, double alpha, double beta);
+
